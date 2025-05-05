@@ -1,0 +1,7 @@
+# config.yaml
+modelo:
+  tipo: RandomForestRegressor
+  n_estimators: 100
+  max_depth: None
+  random_state=42
+
