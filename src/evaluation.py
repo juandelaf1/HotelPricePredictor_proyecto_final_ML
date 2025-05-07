@@ -1,49 +1,40 @@
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-import pickle
-import numpy as np
+import pickle  # Cambiamos joblib por pickle
 
+def load_data(file_path):
+    """Carga los datos desde un archivo CSV."""
+    return pd.read_csv(file_path)
 
-def load_data(data_path):
- """Carga los datos de evaluación."""
- return pd.read_csv(data_path)
+def load_pipeline(pipeline_path):
+    """Carga el pipeline guardado usando pickle."""
+    with open(pipeline_path, 'rb') as file:  # 'rb' para leer en binario
+        pipeline = pickle.load(file)
+    return pipeline
 
+def evaluate_model(pipeline, df):
+    """Evalúa el modelo usando el pipeline."""
 
-def load_model_and_scaler(model_path, scaler_path):
-  """Carga el modelo y el scaler."""
-  with open(model_path, 'rb') as f:
-   model = pickle.load(f)
-  with open(scaler_path, 'rb') as f:
-   scaler = pickle.load(f)
-  return model, scaler
- 
+    X = df.drop(columns=['avg_price_per_room'])
+    y = df['avg_price_per_room']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-def preprocess_data(df, scaler):
-  """Preprocesa los datos para la evaluación."""
-  X = df.drop(columns=['avg_price_per_room'], errors='ignore') # Maneja el caso de no tener la columna objetivo
-  X_scaled = scaler.transform(X)
-  return X_scaled
- 
+    y_pred = pipeline.predict(X_test)  # El pipeline ya incluye el preprocesamiento
 
-def evaluate_model(model, X, y_true):
-  """Evalúa el modelo y devuelve las métricas."""
-  y_pred = model.predict(X)
-  rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-  mae = mean_absolute_error(y_true, y_pred)
-  r2 = r2_score(y_true, y_true)
-  return rmse, mae, r2
- 
+    mse = mean_squared_error(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+
+    print("Model Evaluation:")
+    print(f"Mean Squared Error (MSE): {mse}")
+    print(f"Mean Absolute Error (MAE): {mae}")
+    print(f"R^2 Score: {r2}")
 
 if __name__ == '__main__':
-  # Ejemplo de uso
-  EVAL_DATA_PATH = 'data/processed/hotel_reservations_clean.csv' # O un nuevo dataset de evaluación
-  MODEL_PATH = 'models/hotel_price_model.pkl'
-  SCALER_PATH = 'models/hotel_price_scaler.pkl'
- 
+    PROCESSED_DATA_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/data/processed/hotel_reservations_clean.csv"
+    PIPELINE_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/models/hotel_price_prediction_pipeline.pkl"
 
-  df = load_data(EVAL_DATA_PATH)
-  model, scaler = load_model_and_scaler(MODEL_PATH, SCALER_PATH)
-  X_scaled = preprocess_data(df, scaler)
-  y_true = df['avg_price_per_room']
-  rmse, mae, r2 = evaluate_model(model, X_scaled, y_true)
-  print(f"Evaluation Results: RMSE: {rmse}, MAE: {mae}, R2: {r2}")
+    df = load_data(PROCESSED_DATA_PATH)
+    pipeline = load_pipeline(PIPELINE_PATH)
+    evaluate_model(pipeline, df)

@@ -1,68 +1,137 @@
 import pandas as pd
- from sklearn.model_selection import train_test_split, GridSearchCV
- from sklearn.ensemble import RandomForestRegressor
- from sklearn.preprocessing import StandardScaler
- from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
- import pickle
- 
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, r2_score
+import joblib  # Para guardar el modelo y el scaler
 
- def load_data(data_path):
-  """Carga los datos de entrenamiento."""
-  return pd.read_csv(data_path)
- 
+def load_data(file_path):
+    """Carga los datos desde un archivo CSV."""
+    return pd.read_csv(file_path)
 
- def train_model(df):
-  """Entrena el modelo de Random Forest."""
-  X = df.drop(columns=['avg_price_per_room'])
-  y = df['avg_price_per_room']
-  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
- 
+def train_model(df):
+    """Entrena el modelo de Random Forest Regressor."""
 
-  scaler = StandardScaler()
-  X_train_scaled = scaler.fit_transform(X_train)
-  X_test_scaled = scaler.transform(X_test)
- 
+    X = df.drop(columns=['avg_price_per_room'])
+    y = df['avg_price_per_room']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-  param_grid = {
-  'n_estimators': [100, 200],
-  'max_depth': [10, 20]
-  }
-  forest_model = RandomForestRegressor(random_state=42)
-  grid_search = GridSearchCV(forest_model, param_grid, cv=3, scoring='neg_root_mean_squared_error')
-  grid_search.fit(X_train_scaled, y_train)
-  best_forest_model = grid_search.best_estimator_
- 
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-  return best_forest_model, scaler, X_test_scaled, y_test
- 
+    model = RandomForestRegressor(n_estimators=100, random_state=42)  # Puedes ajustar los hiperparámetros
+    model.fit(X_train_scaled, y_train)
 
- def evaluate_model(model, X_test, y_test):
-  """Evalúa el modelo y devuelve las métricas."""
-  y_pred = model.predict(X_test)
-  rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-  mae = mean_absolute_error(y_test, y_pred)
-  r2 = r2_score(y_test, y_pred)
-  return rmse, mae, r2
- 
+    y_pred = model.predict(X_test_scaled)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
 
- def save_model(model, scaler, model_path='model.pkl', scaler_path='scaler.pkl'):
-  """Guarda el modelo y el scaler."""
-  with open(model_path, 'wb') as f:
-  pickle.dump(model, f)
-  with open(scaler_path, 'wb') as f:
-  pickle.dump(scaler, f)
- 
+    print(f"Mean Squared Error: {mse}")
+    print(f"R^2 Score: {r2}")
 
- if __name__ == '__main__':
-  # Ejemplo de uso
-  CLEAN_DATA_PATH = 'data/processed/hotel_reservations_clean.csv'
-  MODEL_PATH = 'models/hotel_price_model.pkl'
-  SCALER_PATH = 'models/hotel_price_scaler.pkl'
- 
+    return model, scaler
 
-  df = load_data(CLEAN_DATA_PATH)
-  model, scaler, X_test, y_test = train_model(df)
-  rmse, mae, r2 = evaluate_model(model, X_test, y_test)
-  print(f"RMSE: {rmse}, MAE: {mae}, R2: {r2}")
-  save_model(model, scaler, MODEL_PATH, SCALER_PATH)
-  print(f"Model and scaler saved to {MODEL_PATH} and {SCALER_PATH}")
+def save_model(model, scaler, model_path, scaler_path):
+    """Guarda el modelo y el scaler."""
+    joblib.dump(model, model_path)
+    joblib.dump(scaler, scaler_path)
+    print(f"Model saved to {model_path}")
+    print(f"Scaler saved to {scaler_path}")
+
+if __name__ == '__main__':
+    PROCESSED_DATA_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/data/processed/hotel_reservations_clean.csv"
+    MODEL_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/models/trained_model_1.pkl"
+    SCALER_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/models/scaler_trained_model_1.pkl"
+
+    df = load_data(PROCESSED_DATA_PATH)
+    model, scaler = train_model(df)
+    save_model(model, scaler, MODEL_PATH, SCALER_PATH)
+
+
+    import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import mean_squared_error, r2_score
+import joblib
+
+def load_data(file_path):
+    """Carga los datos desde un archivo CSV."""
+    return pd.read_csv(file_path)
+
+def create_pipeline():
+    """Crea el pipeline de preprocesamiento y modelado."""
+
+    # Define las columnas categóricas y numéricas
+    categorical_cols = ['type_of_meal_plan', 'room_type_reserved', 'market_segment_type', 'booking_status']
+    numerical_cols = ['no_of_adults', 'no_of_children', 'no_of_weekend_nights', 'no_of_week_nights',
+                      'required_car_parking_space', 'lead_time', 'arrival_year', 'arrival_month',
+                      'arrival_date', 'repeated_guest', 'no_of_previous_cancellations',
+                      'no_of_previous_bookings_not_canceled', 'no_of_special_requests']
+
+    # Preprocesamiento para columnas numéricas
+    numerical_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='mean')),  # Manejar valores faltantes
+        ('scaler', StandardScaler())
+    ])
+
+    # Preprocesamiento para columnas categóricas
+    categorical_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='most_frequent')), # Manejar valores faltantes
+        ('onehot', OneHotEncoder(handle_unknown='ignore', drop='first'))
+    ])
+
+    # Combinar los transformadores
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', numerical_transformer, numerical_cols),
+            ('cat', categorical_transformer, categorical_cols)
+        ],
+        remainder='passthrough'  # Mantener las otras columnas
+    )
+
+    # Definir el modelo
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+
+    # Crear el pipeline completo
+    pipeline = Pipeline(steps=[('preprocessor', preprocessor), ('model', model)])
+    return pipeline
+
+def train_and_evaluate(pipeline, df):
+    """Entrena y evalúa el modelo."""
+
+    X = df.drop(columns=['avg_price_per_room'])
+    y = df['avg_price_per_room']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Entrenar el pipeline
+    pipeline.fit(X_train, y_train)
+
+    # Predecir y evaluar
+    y_pred = pipeline.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+
+    print(f"Mean Squared Error: {mse}")
+    print(f"R^2 Score: {r2}")
+
+    return pipeline  # Devolvemos el pipeline entrenado
+
+def save_pipeline(pipeline, pipeline_path):
+    """Guarda el pipeline entrenado."""
+    joblib.dump(pipeline, pipeline_path)
+    print(f"Pipeline saved to {pipeline_path}")
+
+if __name__ == '__main__':
+    RAW_DATA_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/data/raw/Hotel Reservations.csv"
+    PROCESSED_DATA_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/data/processed/hotel_reservations_clean.csv"
+    PIPELINE_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/models/hotel_price_prediction_pipeline.pkl"
+
+    df = load_data(PROCESSED_DATA_PATH)
+    pipeline = create_pipeline()
+    trained_pipeline = train_and_evaluate(pipeline, df)
+    save_pipeline(trained_pipeline, PIPELINE_PATH)
