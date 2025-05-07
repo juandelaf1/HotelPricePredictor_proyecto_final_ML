@@ -22,8 +22,8 @@ st.markdown(page_bg_gradient, unsafe_allow_html=True)
 
 # Configuración de archivos
 DATA_FILE = "hotel_reservations.csv"
-MODEL_FILE = r"C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\HotelPricePredictor_proyecto_final_ML\models\trained_model_1.pkl"
-SCALER_FILE = r"C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\HotelPricePredictor_proyecto_final_ML\models\scaler_trained_model_1.pkl"
+MODEL_FILE = r"C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\Optimus_Price_proyecto_final_ML\models\trained_model_1.pkl"
+SCALER_FILE = r"C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\Optimus_Price_proyecto_final_ML\models\scaler_trained_model_1.pkl"
 
 # Función para guardar datos
 def save_to_csv(data):

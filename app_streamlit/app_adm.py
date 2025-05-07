@@ -23,13 +23,13 @@ st.markdown(page_bg_gradient, unsafe_allow_html=True)
 
 # Cargar el modelo y el scaler
 modelo = joblib.load(
-    r'C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\HotelPricePredictor_proyecto_final_ML\models\trained_model_1.pkl')
+    r'C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\Optimus_Price_proyecto_final_ML\models\trained_model_1.pkl')
 scaler = joblib.load(
-    r'C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\HotelPricePredictor_proyecto_final_ML\models\scaler_trained_model_1.pkl')
+    r'C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\Optimus_Price_proyecto_final_ML\models\scaler_trained_model_1.pkl')
 
 
 # Título e imagen
-st.image(r"C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\HotelPricePredictor_proyecto_final_ML\docs\img\optimus_price_logo.jpg",
+st.image(r"C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\Optimus_Price_proyecto_final_ML\docs\img\optimus_price_logo.jpg",
          caption=None, use_container_width=True)
 st.title("🏨 Optimus Price Advisor")
 
