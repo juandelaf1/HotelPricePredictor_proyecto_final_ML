@@ -1,0 +1,6 @@
+streamlit==1.25.0  # Versión específica de Streamlit
+pandas==2.0.3  # Manejo de datos
+numpy==1.24.3  # Cálculos numéricos
+scikit-learn==1.2.2  # Modelado y aprendizaje automático (si lo usas)
+matplotlib==3.7.2  # Visualización de gráficos
+plotly==5.16.0  # Gráficos interactivos
