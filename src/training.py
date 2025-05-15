@@ -1,137 +1,66 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, r2_score
-import joblib  # Para guardar el modelo y el scaler
-
-def load_data(file_path):
-    """Carga los datos desde un archivo CSV."""
-    return pd.read_csv(file_path)
-
-def train_model(df):
-    """Entrena el modelo de Random Forest Regressor."""
-
-    X = df.drop(columns=['avg_price_per_room'])
-    y = df['avg_price_per_room']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    model = RandomForestRegressor(n_estimators=100, random_state=42)  # Puedes ajustar los hiperparámetros
-    model.fit(X_train_scaled, y_train)
-
-    y_pred = model.predict(X_test_scaled)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-
-    print(f"Mean Squared Error: {mse}")
-    print(f"R^2 Score: {r2}")
-
-    return model, scaler
-
-def save_model(model, scaler, model_path, scaler_path):
-    """Guarda el modelo y el scaler."""
-    joblib.dump(model, model_path)
-    joblib.dump(scaler, scaler_path)
-    print(f"Model saved to {model_path}")
-    print(f"Scaler saved to {scaler_path}")
-
-if __name__ == '__main__':
-    PROCESSED_DATA_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/data/processed/hotel_reservations_clean.csv"
-    MODEL_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/models/trained_model_1.pkl"
-    SCALER_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/models/scaler_trained_model_1.pkl"
-
-    df = load_data(PROCESSED_DATA_PATH)
-    model, scaler = train_model(df)
-    save_model(model, scaler, MODEL_PATH, SCALER_PATH)
-
-
-    import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import mean_squared_error, r2_score
 import joblib
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.pipeline import Pipeline
+import os
+import numpy as np
 
-def load_data(file_path):
-    """Carga los datos desde un archivo CSV."""
-    return pd.read_csv(file_path)
+# **1. Cargar datos**
+base_path = os.path.dirname(__file__)
+data_path = os.path.join(base_path, "../data/processed/hotel_reservations_clean.csv")
+df = pd.read_csv(data_path)
+X = df.drop(columns=['avg_price_per_room'])
+y = df['avg_price_per_room']
 
-def create_pipeline():
-    """Crea el pipeline de preprocesamiento y modelado."""
+# **2. Dividir en entrenamiento y prueba**
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Define las columnas categóricas y numéricas
-    categorical_cols = ['type_of_meal_plan', 'room_type_reserved', 'market_segment_type', 'booking_status']
-    numerical_cols = ['no_of_adults', 'no_of_children', 'no_of_weekend_nights', 'no_of_week_nights',
-                      'required_car_parking_space', 'lead_time', 'arrival_year', 'arrival_month',
-                      'arrival_date', 'repeated_guest', 'no_of_previous_cancellations',
-                      'no_of_previous_bookings_not_canceled', 'no_of_special_requests']
+# **3. Guardar train y test en CSV**
+train_data = pd.concat([X_train, y_train], axis=1)
+test_data = pd.concat([X_test, y_test], axis=1)
+train_data.to_csv(r'C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\Optimus_Price_proyecto_final_ML\data\train\hotel_reservations_train_data.csv',
+                  index=False)
+test_data.to_csv(r'C:\Users\JUAN\Desktop\BOOTCAMP - DATA SCIENCE\Ejercicios Juan\Optimus_Price_proyecto_final_ML\data\test\hotel_reservations_test_data.csv',
+                 index=False)
 
-    # Preprocesamiento para columnas numéricas
-    numerical_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='mean')),  # Manejar valores faltantes
-        ('scaler', StandardScaler())
-    ])
+# **4. Definir Pipeline**
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('model', RandomForestRegressor(random_state=42))
+])
 
-    # Preprocesamiento para columnas categóricas
-    categorical_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='most_frequent')), # Manejar valores faltantes
-        ('onehot', OneHotEncoder(handle_unknown='ignore', drop='first'))
-    ])
+# **5. Definir hiperparámetros reducidos para RandomizedSearchCV**
+param_grid = {
+    'model__n_estimators': [10, 50],
+    'model__max_depth': [10, 20],
+    'model__min_samples_split': [2, 5],
+    'model__min_samples_leaf': [1, 2],
+    'model__max_features': ['sqrt', None]
+}
 
-    # Combinar los transformadores
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', numerical_transformer, numerical_cols),
-            ('cat', categorical_transformer, categorical_cols)
-        ],
-        remainder='passthrough'  # Mantener las otras columnas
-    )
+# Configuración de RandomizedSearchCV para evaluar menos combinaciones
+random_search = RandomizedSearchCV(
+    pipeline,
+    param_distributions=param_grid,
+    cv=3,            # Reducimos el número de folds
+    n_iter=10,       # Se evaluarán 10 combinaciones aleatorias
+    scoring='neg_root_mean_squared_error',
+    n_jobs=-1,
+    verbose=2,
+    random_state=42
+)
 
-    # Definir el modelo
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
+random_search.fit(X_train, y_train)
 
-    # Crear el pipeline completo
-    pipeline = Pipeline(steps=[('preprocessor', preprocessor), ('model', model)])
-    return pipeline
+# **6. Obtener el mejor modelo**
+best_model = random_search.best_estimator_
+print("✅ Mejores hiperparámetros encontrados:", random_search.best_params_)
 
-def train_and_evaluate(pipeline, df):
-    """Entrena y evalúa el modelo."""
-
-    X = df.drop(columns=['avg_price_per_room'])
-    y = df['avg_price_per_room']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Entrenar el pipeline
-    pipeline.fit(X_train, y_train)
-
-    # Predecir y evaluar
-    y_pred = pipeline.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-
-    print(f"Mean Squared Error: {mse}")
-    print(f"R^2 Score: {r2}")
-
-    return pipeline  # Devolvemos el pipeline entrenado
-
-def save_pipeline(pipeline, pipeline_path):
-    """Guarda el pipeline entrenado."""
-    joblib.dump(pipeline, pipeline_path)
-    print(f"Pipeline saved to {pipeline_path}")
-
-if __name__ == '__main__':
-    RAW_DATA_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/data/raw/Hotel Reservations.csv"
-    PROCESSED_DATA_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/data/processed/hotel_reservations_clean.csv"
-    PIPELINE_PATH = "C:/Users/JUAN/Desktop/BOOTCAMP - DATA SCIENCE/Ejercicios Juan/HotelPricePredictor_proyecto_final_ML/models/hotel_price_prediction_pipeline.pkl"
-
-    df = load_data(PROCESSED_DATA_PATH)
-    pipeline = create_pipeline()
-    trained_pipeline = train_and_evaluate(pipeline, df)
-    save_pipeline(trained_pipeline, PIPELINE_PATH)
+# **7. Guardar el modelo optimizado**
+models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
+os.makedirs(models_dir, exist_ok=True)
+model_file = os.path.join(models_dir, "pipeline_trained_model.pkl")
+joblib.dump(best_model, model_file)
+print(f"✅ Modelo guardado en: {model_file}")
